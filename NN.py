@@ -1,4 +1,5 @@
 
+
 # %%
 from sklearn.model_selection import train_test_split
 import wandb
@@ -6,15 +7,16 @@ from keras.datasets import fashion_mnist
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-wandb.login()
+from sklearn import metrics
 
 # %% [markdown]
 # ### DOWNLOADING THE DATASET AND PLOTTING ONE SAMPLE IMAGE FROM EACH CLASS
 
 # %%
 def plot_images():
+  wandb.login(key = "aecb4b665a37b40204530b0627a42274aeddd3e1")
   # start a new wandb run to track this script
-  wandb.init(project="CS6910_Assignment-1")
+  wandb.init(project="CS6910_Assignment-1",entity="cs22m078")
   # simulate training
   # x_train is a (60000,28,28) matrix consisting image pixels for training
   # y_train is a (60000,1) matrix consisting of labels
@@ -76,7 +78,7 @@ def data_preprocess():
     #RESHAPING MY DATA TO COLUMN-WISE IMAGES
     x_train=x_train.T
     x_test=x_test.T
-    return x_train,y_train,train_x,train_y,val_x,val_y
+    return x_train,y_train,train_x,train_y,val_x,val_y,x_test, y_test
 
 #ONE-HOT ENCODING FOR Y_TRAIN AND Y_TEST: 
 def one_hot_encoding(y):
@@ -104,6 +106,9 @@ def softmax(x):
 
 def Relu(x):
     return np.maximum(0,x)
+
+def identity(x):
+    return x
 
 def Relu_derivative(x):
     return 1*(x>0) 
@@ -181,6 +186,8 @@ def FeedForwardNetwork(weights,biases,L,data,activation):
       h[i]=(Relu(a[i]))
     if(activation=='tanh'):
       h[i]=(tanh(a[i]))
+    if(activation=='identity'):
+      h[i]=(identity(a[i]))
   #weight and bias matrix for ouput layer
   weight=weights[L]
   bias=biases[L]
@@ -192,7 +199,7 @@ def FeedForwardNetwork(weights,biases,L,data,activation):
 # ## BACK PROPOGATION
 
 # %%
-def BackPropogation(weights,L,H,A,exp_Y,y_hat,activation):
+def BackPropogation(weights,L,H,A,exp_Y,y_hat,activation,loss="cross_entropy"):
   # Input Parameters of function
   # --> Model Parameters: weights and biases
   # --> H: Post-activations, A: Pre-Activations
@@ -204,7 +211,10 @@ def BackPropogation(weights,L,H,A,exp_Y,y_hat,activation):
   gradients_A=[0] * (L+1)
   
   #Computing Gradient For The Output Layer(Pre Activation)
-  gradients_A[L]=-(exp_Y-y_hat)
+  if loss=="cross_entropy":
+    gradients_A[L]=-(exp_Y-y_hat)
+  if loss=="mse":
+    gradients_A[L]=(2 / y_hat.shape[1]) * (y_hat-exp_Y)
   for k in range(L,0,-1):
     #compute gradients of the parameters
     gradients_W[k]=np.matmul(gradients_A[k],np.transpose(H[k-1]))
@@ -218,7 +228,9 @@ def BackPropogation(weights,L,H,A,exp_Y,y_hat,activation):
         gradients_A[k-1]=np.multiply(gradients_H[k-1],Relu_derivative(A[k-1]))
       if activation=='tanh':
         gradients_A[k-1]=np.multiply(gradients_H[k-1],tanh_derivative(A[k-1]))
-    
+      if activation=='identity':
+        gradients_A[k-1]=gradients_H[k-1]
+
 
   return gradients_W,gradients_B
 
@@ -315,7 +327,7 @@ def rmsprop_params_update(weights, biases, gradients_B,gradients_W, beta,eta, W_
 # ### LEARNING PARAMETERS
 
 # %%
-def learning_params(hidden_layers,neuron,x_train,y_train,x_val,y_val,learning_algorithm,eta,epochs,batch_size,activation,init_method,L2_lamb,momemtum=0.9 ,beta=0.9 ,beta1=0.9 ,beta2=0.99 ,epsilon=0.00001):
+def learning_params(hidden_layers,neuron,x_train,y_train,x_val,y_val,learning_algorithm,eta,epochs,batch_size,activation,init_method,L2_lamb,momemtum=0.9 ,beta=0.9 ,beta1=0.9 ,beta2=0.99 ,epsilon=0.00001,loss="cross_entropy"):
   count=1
   predicted_y=[]
   L=hidden_layers+1
@@ -324,6 +336,7 @@ def learning_params(hidden_layers,neuron,x_train,y_train,x_val,y_val,learning_al
     neurons[i]=neuron
   exp_y=one_hot_encoding(y_train)
   exp_y_val=one_hot_encoding(y_val)
+  i
   weights,biases,previous_updates_W,previous_updates_B=initialize_params(hidden_layers,neurons,init_method)
   epoch_train_loss=[]
   epoch_val_loss=[]
@@ -341,29 +354,29 @@ def learning_params(hidden_layers,neuron,x_train,y_train,x_val,y_val,learning_al
           W_look_ahead=weights-(beta)*previous_updates_W
           B_look_ahead=biases-(beta)*previous_updates_B
           output,post_act,pre_act=FeedForwardNetwork(W_look_ahead,B_look_ahead,L,mini_batch,activation)
-          gradients_W,gradients_B=BackPropogation(W_look_ahead,L,post_act,pre_act,exp_y[:,i:i+batch_size],output,activation)
+          gradients_W,gradients_B=BackPropogation(W_look_ahead,L,post_act,pre_act,exp_y[:,i:i+batch_size],output,activation,loss)
           weights,biases,previous_updates_W,previous_updates_B=update_parameters_momentum(weights,biases, gradients_B,gradients_W, beta, previous_updates_W,previous_updates_B,eta,L,L2_lamb)
         elif learning_algorithm=='nadam':
           W_look_ahead=weights-(beta)*previous_updates_W
           B_look_ahead=biases-(beta)*previous_updates_B
           output,post_act,pre_act=FeedForwardNetwork(W_look_ahead,B_look_ahead,L,mini_batch,activation)
-          gradients_W,gradients_B=BackPropogation(W_look_ahead,L,post_act,pre_act,exp_y[:,i:i+batch_size],output,activation)
+          gradients_W,gradients_B=BackPropogation(W_look_ahead,L,post_act,pre_act,exp_y[:,i:i+batch_size],output,activation,loss)
           weights,biases,m_W,m_B,v_W,v_B,t= update_parameters_adam(weights, biases, gradients_B,gradients_W,eta, m_W,m_B,v_W,v_B, t,L,L2_lamb,beta1,beta2,epsilon)
         elif learning_algorithm=='momemtum':
             output,post_act,pre_act=FeedForwardNetwork(weights,biases,L,mini_batch,activation)
-            gradients_W,gradients_B=BackPropogation(weights,L,post_act,pre_act,exp_y[:,i:i+batch_size],output,activation)
+            gradients_W,gradients_B=BackPropogation(weights,L,post_act,pre_act,exp_y[:,i:i+batch_size],output,activation,loss)
             weights,biases,previous_updates_W,previous_updates_B=update_parameters_momentum(weights, biases, gradients_B,gradients_W, momemtum, previous_updates_W,previous_updates_B,eta,L,L2_lamb)
         elif learning_algorithm=='sgd':
             output,post_act,pre_act=FeedForwardNetwork(weights,biases,L,mini_batch,activation)
-            gradients_W,gradients_B=BackPropogation(weights,L,post_act,pre_act,exp_y[:,i:i+batch_size],output,activation)
+            gradients_W,gradients_B=BackPropogation(weights,L,post_act,pre_act,exp_y[:,i:i+batch_size],output,activation,loss)
             weights,biases=sgd_params_update(weights,biases,gradients_W,gradients_B,eta,L,L2_lamb)
         elif learning_algorithm=='adam':
             output,post_act,pre_act=FeedForwardNetwork(weights,biases,L,mini_batch,activation)
-            gradients_W,gradients_B=BackPropogation(weights,L,post_act,pre_act,exp_y[:,i:i+batch_size],output,activation)
+            gradients_W,gradients_B=BackPropogation(weights,L,post_act,pre_act,exp_y[:,i:i+batch_size],output,activation,loss)
             weights,biases,m_W,m_B,v_W,v_B,t= update_parameters_adam(weights, biases, gradients_B,gradients_W,eta, m_W,m_B,v_W,v_B, t,L,L2_lamb,beta1,beta2,epsilon)
         elif learning_algorithm=='rmsprop':
             output,post_act,pre_act=FeedForwardNetwork(weights,biases,L,mini_batch,activation)
-            gradients_W,gradients_B=BackPropogation(weights,L,post_act,pre_act,exp_y[:,i:i+batch_size],output,activation)
+            gradients_W,gradients_B=BackPropogation(weights,L,post_act,pre_act,exp_y[:,i:i+batch_size],output,activation,loss)
             weights,biases,previous_updates_W,previous_updates_B = rmsprop_params_update(weights, biases, gradients_B,gradients_W, beta,eta, previous_updates_W,previous_updates_B,L,L2_lamb)
         else:
             break;
@@ -406,42 +419,76 @@ def run_sweeps(train_x,train_y,val_x,val_y):
         name='_h1_'+str(wandb.config.hidden_layers)+"_SL_"+str(wandb.config.neurons)+"_BS_"+str(wandb.config.batch_size)+"_OPT_"+str(wandb.config.learning_algorithm)
         _,_,epoch_train_loss,epoch_val_loss,acc_train,acc_val=learning_params(wandb.config.hidden_layers,wandb.config.neurons,train_x,train_y,val_x,val_y,wandb.config.learning_algorithm,wandb.config.eta,wandb.config.epoch,wandb.config.batch_size,wandb.config.activation,wandb.config.weight_init,wandb.config.L2_lamb)
         for i in range(len(epoch_train_loss)):
-            wandb.log({"loss":epoch_train_loss[i],"epoch":(i+1)})
-        for i in range(len(epoch_val_loss)):
-            wandb.log({"val_loss":epoch_val_loss[i],"epoch":(i+1)})
-        for i in range(len(acc_train)):
-            wandb.log({"accuracy":acc_train[i],"epoch":(i+1)})
-        for i in range(len(acc_val)):
-            wandb.log({"val_acc":acc_val[i],"epoch":(i+1)})
+            wandb.log({"loss":epoch_train_loss[i]})
+            wandb.log({"val_loss":epoch_val_loss[i]})
+            wandb.log({"accuracy":acc_train[i]})
+            wandb.log({"val_acc":acc_val[i]})
+            wandb.log({"epoch": (i+1)})
         wandb.log({"acc":acc_val[-1]})
         wandb.run.name = name
         wandb.run.save()
         wandb.run.finish()
     sweep_id=wandb.sweep(config,project="CS6910_Assignment-1")
-    wandb.agent(sweep_id,function=trainn,count=2)
+    wandb.agent(sweep_id,function=trainn,count=200)
+
+# %% [markdown]
+# ## Confusion Matrix
+
+# %%
+def log_confusion_mat():    
+    wandb.init(project="CS6910_Assignment-1",entity="cs22m078")
+    _,_,train_x,train_y,val_x,val_y,x_test,y_test=data_preprocess()
+    hidden_layers=6
+    weights,biases,epoch_train_loss,epoch_val_loss,acc_train,acc_val=learning_params(hidden_layers=6,neuron=64,x_train=train_x,y_train=train_y,x_val=val_x,y_val=val_y,learning_algorithm="nadam",eta=0.001,epochs=10,batch_size=32,activation="relu",init_method="xavier",L2_lamb=0.0005,momemtum=0.9 ,beta=0.9 ,beta1=0.9 ,beta2=0.99 ,epsilon=0.00001)
+    L=hidden_layers+1
+    full_output_test,_,_=FeedForwardNetwork(weights,biases,L,x_test,"relu")
+    predicted_y=np.argmax(full_output_test,axis=0)
+    predicted_y=np.array(predicted_y,dtype=object)
+    pred_y=predicted_y
+    p_y=pred_y.tolist()
+    y_t=y_test.tolist()
+    conf= metrics.confusion_matrix(p_y,y_t)
+    cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = conf,display_labels=np.array(["T-shirt/top","Trouser","Pullover","Dress","Coat","Sandal","Shirt","Sneaker","Bag","Boot"]))
+    fig, ax = plt.subplots(figsize=(11,11))
+    cm_display.plot(ax=ax)
+    wandb.log({"confusion_matrix":plt})
+    wandb.run.name = "Confusion Matrix"
+    wandb.run.save()
+    wandb.run.finish()
+
+# %% [markdown]
+# ## Plotting MSE and Cross-Entropy Curve
+
+# %%
+def plot_cost_curve(epoch_train_loss_mse, epoch_train_loss):
+    wandb.init(project="CS6910_Assignment-1",entity="cs22m078")
+    plt.plot(list(range(len(epoch_train_loss_mse))), epoch_train_loss_mse, 'r', label="Training loss MSE")
+    plt.plot(list(range(len(epoch_train_loss))), epoch_train_loss, 'lime', label="Training loss Cross Entropy")
+    plt.title("MSE Vs Cross-Entropy Plot", size=14)
+    plt.xlabel("Number of epochs", size=14)
+    plt.ylabel("Loss", size=14)
+    plt.legend()
+    wandb.log({"MSE Vs Cross-Entropy Plot":wandb.Image(plt)})
+    wandb.run.name = "MSE Vs Cross-Entropy Plot"
+    wandb.run.save()
+    wandb.run.finish()
+
+# %%
+def bestfit(train_x,train_y,val_x,val_y):
+    _,_,epoch_train_loss_cross,_,_,_=learning_params(hidden_layers=6,neuron=64,x_train=train_x,y_train=train_y,x_val=val_x,y_val=val_y,learning_algorithm="nadam",eta=0.001,epochs=10,batch_size=32,activation="relu",init_method="xavier",L2_lamb=0.0005,momemtum=0.9 ,beta=0.9 ,beta1=0.9 ,beta2=0.99 ,epsilon=0.00001)
+    _,_,epoch_train_loss_mse,_,_,_=learning_params(hidden_layers=6,neuron=64,x_train=train_x,y_train=train_y,x_val=val_x,y_val=val_y,learning_algorithm="nadam",eta=0.001,epochs=10,batch_size=32,activation="relu",init_method="xavier",L2_lamb=0.0005,momemtum=0.9 ,beta=0.9 ,beta1=0.9 ,beta2=0.99 ,epsilon=0.00001,loss="mse")
+    return epoch_train_loss_cross,epoch_train_loss_mse
 
 # %%
 def main():
     plot_images()
-    _,_,train_x,train_y,val_x,val_y=data_preprocess()
+    _,_,train_x,train_y,val_x,val_y,_,_=data_preprocess()
     run_sweeps(train_x,train_y,val_x,val_y)
+    log_confusion_mat()
+    epoch_train_loss_cross, epoch_train_loss_mse=bestfit(train_x,train_y,val_x,val_y)
+    plot_cost_curve(epoch_train_loss_mse, epoch_train_loss_cross)
 
 if __name__=="__main__":
     main()
-
-# %%
-from sklearn import metrics
-import matplotlib.pyplot as plt
-_,_,train_x,train_y,val_x,val_y=data_preprocess()
-weights,biases,epoch_train_loss,epoch_val_loss,acc_train,acc_val=learning_params(hidden_layers=3,neuron=32,x_train=train_x,y_train=train_y,x_val=val_x,y_val=val_y,learning_algorithm="sgd",eta=0.001,epochs=10,batch_size=32,activation="sigmoid",init_method="xavier",L2_lamb=0.01,momemtum=0.9 ,beta=0.9 ,beta1=0.9 ,beta2=0.99 ,epsilon=0.00001)
-full_output_train,_,_=FeedForwardNetwork(weights,biases,4,train_x,"sigmoid")
-predicted_y=np.argmax(full_output_train,axis=0)
-predicted_y=np.array(predicted_y,dtype=object)
-pred_y=predicted_y
-p_y=pred_y.tolist()
-y_t=train_y.tolist()
-conf= metrics.confusion_matrix(p_y,y_t)
-cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = conf)
-cm_display.plot()
 
 
