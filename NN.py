@@ -204,7 +204,8 @@ def BackPropogation(weights,L,H,A,exp_Y,y_hat,activation,loss="cross_entropy"):
   if loss=="cross_entropy":
     gradients_A[L]=-(exp_Y-y_hat)
   if loss=="mean_squared_error":
-    gradients_A[L]=(2 / y_hat.shape[1]) * (y_hat-exp_Y)
+    # gradients_A[L]=(2 / y_hat.shape[1]) * (y_hat-exp_Y)
+    gradients_A[L]=-(exp_Y-y_hat) * softmax(A[L]) * (1-softmax(A[L]))
   for k in range(L,0,-1):
     #compute gradients of the parameters
     gradients_W[k]=np.matmul(gradients_A[k],np.transpose(H[k-1]))
