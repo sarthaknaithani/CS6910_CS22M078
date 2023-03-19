@@ -1,4 +1,3 @@
-# %%
 from sklearn.model_selection import train_test_split
 import wandb
 from keras.datasets import fashion_mnist,mnist
@@ -7,10 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import metrics
 
-# %% [markdown]
-# ### DOWNLOADING THE DATASET AND PLOTTING ONE SAMPLE IMAGE FROM EACH CLASS
-
-# %%
+# DOWNLOADING THE DATASET AND PLOTTING ONE SAMPLE IMAGE FROM EACH CLASS
 def plot_images():
   wandb.login(key = "aecb4b665a37b40204530b0627a42274aeddd3e1")
   # start a new wandb run to track this script
@@ -51,10 +47,9 @@ def plot_images():
   # finish the wandb run, necessary in notebooks
   wandb.finish()
 
-# %% [markdown]
-# ## DATA-PREPROCESSING
 
-# %%
+# DATA-PREPROCESSING
+
 def data_preprocess(dataset="fashion_mnist"):
     if dataset=="fashion_mnist":
         (x_train, y_train), (x_test, y_test) =fashion_mnist.load_data()
@@ -68,8 +63,6 @@ def data_preprocess(dataset="fashion_mnist"):
     num_outputs=10
     x_train=x_train.reshape(x_train.shape[0],784)
     x_test=x_test.reshape(x_test.shape[0],784)
-
-
     #SPLITTING THE TRAINING DATA FOR VALIDATION AND TESTING
     train_x,val_x,train_y,val_y=train_test_split(x_train,y_train)
     train_x=np.transpose(train_x)
@@ -81,6 +74,8 @@ def data_preprocess(dataset="fashion_mnist"):
     x_test=x_test.T
     return x_train,y_train,train_x,train_y,val_x,val_y,x_test, y_test
 
+
+
 #ONE-HOT ENCODING FOR Y_TRAIN AND Y_TEST: 
 def one_hot_encoding(y):
     exp_y=np.zeros((10,y.shape[0]))
@@ -88,10 +83,9 @@ def one_hot_encoding(y):
         exp_y[y[i]][i]=1
     return exp_y
 
-# %% [markdown]
-# ### ACTIVATION FUNCTIONS
 
-# %%
+# ACTIVATION FUNCTIONS
+
 def sigmoid(x):
     return 1.0 / (1.0 + np.exp(-np.clip(x, -500, 500)))
 
@@ -118,10 +112,9 @@ def tanh(x):
 def tanh_derivative(x):
     return (1 - (np.tanh(x)**2))
 
-# %% [markdown]
-# ### INITIALIZING THE PARAMETERS
 
-# %%
+# INITIALIZING THE PARAMETERS
+
 def initialize_params(hidden_layers,neurons,method):
   #USING XAVIER INITIALIZATION TO INITIALIZE WEIGHTS AND BIAS MATRIX
 
@@ -163,10 +156,9 @@ def initialize_params(hidden_layers,neurons,method):
   previous_updates_B=np.array(previous_updates_B,dtype=object)
   return weights,biases,previous_updates_W,previous_updates_B
 
-# %% [markdown]
-# ## FEED FORWARD PROPOGATION
 
-# %%
+# FEED FORWARD PROPOGATION
+
 def FeedForwardNetwork(weights,biases,L,data,activation):
   #Returns the array containing the output probablity for each class the data can belong
   a=[0]*(L+1)
@@ -194,10 +186,9 @@ def FeedForwardNetwork(weights,biases,L,data,activation):
   h[L]=softmax(a[L])
   return h[L],h,a
 
-# %% [markdown]
-# ## BACK PROPOGATION
 
-# %%
+# BACK PROPOGATION
+
 def BackPropogation(weights,L,H,A,exp_Y,y_hat,activation,loss="cross_entropy"):
   # Input Parameters of function
   # --> Model Parameters: weights and biases
@@ -233,10 +224,8 @@ def BackPropogation(weights,L,H,A,exp_Y,y_hat,activation,loss="cross_entropy"):
 
   return gradients_W,gradients_B
 
-# %% [markdown]
-# ## LOSS AND ACCURACY FUNCTIONS
+# LOSS AND ACCURACY FUNCTIONS
 
-# %%
 def calc_loss(weights,y,exp_y,loss,data_size,L2_lamb):
     # Calculating -log(p(x)) where p(x) is probablity where our of our actual class label of x
     # exp_y contains y=1 if y is actual class of x else 0
@@ -263,10 +252,9 @@ def calc_accuracy(y,predicted_y):
             correct+=1
     return (correct/len(y))*100
 
-# %% [markdown]
-# ## FUNCTIONS FOR UPDATION OF PARAMETERS
 
-# %%
+# FUNCTIONS FOR UPDATION OF PARAMETERS
+
 def sgd_params_update(weights,biases,gradients_W,gradients_B,eta,L,L2_lamb):
     gradients_B=np.array(gradients_B,dtype=object)
     gradients_W=np.array(gradients_W,dtype=object)
@@ -322,10 +310,8 @@ def rmsprop_params_update(weights, biases, gradients_B,gradients_W, beta,eta, W_
     return weights,biases,W_v,B_v
 
 
-# %% [markdown]
-# ### LEARNING PARAMETERS
+# LEARNING PARAMETERS
 
-# %%
 def learning_params(hidden_layers,neuron,x_train,y_train,x_val,y_val,learning_algorithm,eta,epochs,batch_size,activation,init_method,L2_lamb,momentum=0.9 ,beta=0.9 ,beta1=0.9 ,beta2=0.99 ,epsilon=0.00001,loss="cross_entropy"):
   count=1
   predicted_y=[]
@@ -390,7 +376,6 @@ def learning_params(hidden_layers,neuron,x_train,y_train,x_val,y_val,learning_al
       count+=1
   return weights,biases,epoch_train_loss,epoch_val_loss,acc_train,acc_val
 
-# %%
 def run_sweeps(train_x,train_y,val_x,val_y):
 
     config = {
@@ -430,10 +415,9 @@ def run_sweeps(train_x,train_y,val_x,val_y):
     sweep_id=wandb.sweep(config,project="CS6910_Assignment-1")
     wandb.agent(sweep_id,function=trainn,count=200)
 
-# %% [markdown]
-# ## Confusion Matrix
 
-# %%
+# Confusion Matrix
+
 def log_confusion_mat():    
     wandb.init(project="CS6910_Assignment-1",entity="cs22m078")
     _,_,train_x,train_y,val_x,val_y,x_test,y_test=data_preprocess()
@@ -457,7 +441,6 @@ def log_confusion_mat():
     wandb.run.finish()
     return acc_test
 
-# %%
 def wandb_run_configuration(project_name,entity,hidden_layers,neuron,x_train,y_train,x_val,y_val,x_test,y_test,learning_algorithm,eta,epochs,batch_size,activation,init_method,L2_lamb,momentum,beta,beta1,beta2,epsilon,loss):
     wandb.login(key = "aecb4b665a37b40204530b0627a42274aeddd3e1")
     wandb.init(project=project_name,entity=entity)
@@ -480,7 +463,6 @@ def wandb_run_configuration(project_name,entity,hidden_layers,neuron,x_train,y_t
     wandb.run.save()
     wandb.run.finish()
 
-# %%
 def main():
     plot_images()
     _,_,train_x,train_y,val_x,val_y,_,_=data_preprocess()
