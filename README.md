@@ -1,7 +1,7 @@
 
 # CS6910 - Assignment 1
 
-## Authors: SARTHAK NAITHANI
+## Author: SARTHAK NAITHANI
 
 ### Link to the project report:
 
@@ -9,7 +9,7 @@ https://api.wandb.ai/links/cs22m078/w04bw2q1
 
 ### Steps to follow:
 
-1. Install pip install wandb to your system
+1. Install wandb by command *pip install wandb* to your system
 2. Run train.py file with the appropriate arguments given below
 3. Your run will be logged to wandb to my project "CS6910_Assignment-1" and entity="cs22m078"
 4. You can view the logs that is the model training accuracy, validation accuracy, testing accuracy and respective losses
